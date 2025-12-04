@@ -142,13 +142,21 @@ def generate_exam_pdf(request):
             <style>
                 @page { 
                     size: A4; 
-                    /* Zero side margins on page to allow header/footer to span full width */
-                    margin: 1.5cm 0cm 1.5cm 0cm; 
+                    /* MARGINS ADJUSTED: 
+                       Top/Bottom: 1cm (Requested reduction)
+                       Left/Right: 1cm 
+                    */
+                    margin: 1cm 1cm 1cm 1cm; 
+
                     @top-center {
                         content: element(header);
+                        vertical-align: bottom; /* Sit at the line */
+                        width: 100%;
                     }
                     @bottom-center {
                         content: element(footer);
+                        vertical-align: top; /* Sit at the line */
+                        width: 100%;
                     }
                 }
 
@@ -158,54 +166,63 @@ def generate_exam_pdf(request):
                     line-height: 1.4;
                     text-align: justify;
                     color: #000;
-                    /* Add side margins to body instead */
-                    margin-left: 1cm;
-                    margin-right: 1cm;
+                    margin: 0; 
                 }
 
-                /* Header & Footer */
+                /* --- 1. VERTICAL LINE (Fixed Position) --- */
+                .vertical-line {
+                    position: fixed;
+                    left: 50%;
+                    
+                    /* Extend to absolute edges (0) to guarantee connection */
+                    top: 0; 
+                    bottom: 0; 
+                    
+                    border-left: 1px solid #000; 
+                    z-index: -10; 
+                }
+
+                /* --- 2. HEADER & FOOTER --- */
                 div.header {
                     position: running(header);
                     width: 100%;
                     border-bottom: 1px solid #000;
+                    
+                    /* Padding creates the white space that masks the vertical line.
+                       Since margin is now 1cm, we use ~0.4cm padding so the 
+                       text + padding fits nicely in that 1cm space. */
+                    padding-top: 0.4cm; 
+                    padding-bottom: 5px; 
+                    
                     margin-bottom: 0;
-                    padding-top: 0.8cm;
-                    padding-bottom: 0;
                     font-family: Arial, Helvetica, sans-serif;
                     font-size: 9pt;
-                    /* Padding to align text with body content, while border spans full width */
-                    padding-left: 1cm;
-                    padding-right: 1cm;
-                    box-sizing: border-box; 
+                    background-color: white; 
                 }
 
                 div.footer {
                     position: running(footer);
                     width: 100%;
                     border-top: 1px solid #000;
+                    
+                    /* Padding creates the white space that masks the vertical line. */
+                    padding-bottom: 0.4cm;
+                    padding-top: 5px; 
+                    
                     margin-top: 0;
-                    padding-top: 0;
-                    padding-bottom: 0.8cm;
                     font-family: Arial, Helvetica, sans-serif;
                     font-size: 9pt;
-                    /* Padding to align text with body content */
-                    padding-left: 1cm;
-                    padding-right: 1cm;
-                    box-sizing: border-box;
+                    background-color: white;
                 }
                 
-                /* Use floats for splitting text */
-                .left-text {
-                    float: left;
+                table.layout-table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    border: none;
                 }
-                
-                .right-text {
-                    float: right;
-                }
-                
-                /* Clear floats if necessary, though usually not needed in fixed height running elements if simple */
-                
-                /* Page Counter */
+                td.left { text-align: left; width: 50%; }
+                td.right { text-align: right; width: 50%; }
+
                 .pageNumber::after {
                     content: counter(page);
                 }
@@ -214,30 +231,32 @@ def generate_exam_pdf(request):
                 .content-columns {
                     column-count: 2;
                     column-gap: 1cm;
-                    column-rule: 1px solid #000;
-                    column-fill: auto; /* Fill first column before second */
+                    column-fill: auto; 
                     width: 100%;
+                    padding-top: 10px; /* Reduced slightly to match tighter layout */
                 }
 
                 /* Question Styling */
                 .question-item {
-                    /* break-inside: avoid; Removed to allow questions to split and save space */
                     margin-bottom: 20px;
                 }
 
                 h1 { 
-                    font-family: Arial, Helvetica, sans-serif; /* Sans-serif for question title */
+                    font-family: Arial, Helvetica, sans-serif;
                     font-size: 10pt; 
                     font-weight: bold; 
                     margin: 0 0 10px 0;
                     text-transform: uppercase;
                     color: #000;
-                    break-after: avoid; /* Keep title with content */
+                    break-after: avoid; 
+                }
+                
+                .area-header {
+                    break-after: avoid;
                 }
 
                 img { max-width: 100%; height: auto; display: block; margin: 10px auto; }
-
-                /* LaTeX adjustments */
+                
                 img.latex-inline {
                     height: 1.2em; 
                     vertical-align: -0.3em;
@@ -252,55 +271,38 @@ def generate_exam_pdf(request):
                 }
                 
                 p { margin: 0 0 8px 0; }
-
-                .flex-container {
-                    /* 1. Activate Flexbox */
-                    display: flex;
-                    
-                    /* 2. Push items to opposite edges */
-                    justify-content: space-between;
-                    
-                    /* 3. Vertically align text (optional but recommended) */
-                    align-items: center;
-                    
-                    /* Ensure container takes full width */
-                    width: 100%; 
-                }
-
-                .flex-container > div[style*="clear: both"] {
-                    display: none;
-                }
             </style>
         </head>
         <body>
+            <div class="vertical-line"></div>
+
             <div class="header">
-                <div class="flex-container">
-                    <div>Exame de Acesso ao Ensino Superior do Tocantins</div>
-                    <div>EXATO 2025 – 2ª Edição</div>
-                    <div style="clear: both;"></div>
-                </div> 
+                <table class="layout-table">
+                    <tr>
+                        <td class="left">Exame de Acesso ao Ensino Superior do Tocantins</td>
+                        <td class="right">EXATO 2025 – 2ª Edição</td>
+                    </tr>
+                </table>
             </div>
 
             <div class="footer">
-                <div class="flex-container">
-                    <div>Prova de Conhecimentos | TARDE</div>
-                    <div><span class="pageNumber"></span></div>
-                    <div style="clear: both;"></div>
-                </div>
+                <table class="layout-table">
+                    <tr>
+                        <td class="left">Prova de Conhecimentos | TARDE</td>
+                        <td class="right"><span class="pageNumber"></span></td>
+                    </tr>
+                </table>
             </div>
 
             <div class="content-columns">
         """
 
-
-        # Order by AreaDoConhecimento name to group them
         queryset = queryset.order_by('area_do_conhecimento__name', 'id')
 
         current_area = None
         for index, post in enumerate(queryset):
             processed_content = process_content_for_pdf(post.content)
             
-            # Check if area has changed
             if post.area_do_conhecimento != current_area:
                 current_area = post.area_do_conhecimento
                 area_name = current_area.name if current_area else "Sem Área"
