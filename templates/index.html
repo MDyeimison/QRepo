@@ -1,0 +1,372 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel de Questões</title>
+
+    <!-- jQuery (required for Summernote) -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    {{ form.media }}
+
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+    <style>
+        .action-bar {
+            background-color: #ecf0f1;
+            padding: 15px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            border-bottom: 1px solid #bdc3c7;
+        }
+
+        .area-pill {
+            display: inline-block;
+            background-color: #3498db;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 15px;
+            font-size: 0.8em;
+            font-weight: bold;
+            margin-top: 5px;
+            text-transform: uppercase;
+        }
+    </style>
+</head>
+
+<body>
+
+    <nav
+        style="background: #2c3e50; color: white; padding: 15px; text-align: center; display: flex; align-items: center; justify-content: center;">
+        <h1 style="margin: 0;">Banco de Questões</h1>
+    </nav>
+
+    <div class="action-bar">
+        <button type="button" class="btn-add" style="position: static; background-color: #27ae60;"
+            onclick="toggleSelectAll()">Selecionar todos</button>
+        <button type="submit" form="exportForm" class="btn-add"
+            style="position: static; background-color: #e67e22;">Exportar Selecionados (PDF)</button>
+        <button type="submit" form="exportForm" formaction="{% url 'generate_exam_pdf' %}" class="btn-add"
+            style="position: static; background-color: #3498db;">Gerar Prova</button>
+        <button type="button" class="btn-add" style="position: static;" onclick="openModal()">Adicionar Questão
+            +</button>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="filter-bar"
+        style="background-color: #f8f9fa; padding: 15px; border-bottom: 1px solid #bdc3c7; display: flex; gap: 15px; align-items: center;">
+        <div style="flex: 1;">
+            <input type="text" id="searchInput" placeholder="Buscar por nome..." value="{{ current_search }}"
+                style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; font-size: 14px;">
+        </div>
+        <div style="min-width: 250px;">
+            <select id="areaFilter"
+                style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; font-size: 14px;">
+                <option value="">Todas as Áreas</option>
+                {% for area in areas %}
+                {% if current_area == area.id|stringformat:"i" %}
+                <option value="{{ area.id }}" selected>{{ area.name }}</option>
+                {% else %}
+                <option value="{{ area.id }}">{{ area.name }}</option>
+                {% endif %}
+                {% endfor %}
+            </select>
+        </div>
+        <button onclick="applyFilters()" class="btn-add" style="position: static; white-space: nowrap;">
+            Filtrar
+        </button>
+        <button onclick="clearFilters()" class="btn-add"
+            style="position: static; background-color: #95a5a6; white-space: nowrap;">
+            Limpar
+        </button>
+    </div>
+
+
+    <!-- Modal -->
+    <div id="postModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h2>Nova Questão</h2>
+            <form action="{% url 'create_post' %}" method="POST">
+                {% csrf_token %}
+                {{ form.as_p }}
+                <button type="submit" class="btn-submit">Salvar</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- View Post Modal -->
+    <div id="viewPostModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeViewModal()">&times;</span>
+            <div id="viewModalContent">
+                <!-- Content will be injected here -->
+            </div>
+        </div>
+    </div>
+
+    <form id="exportForm" action="{% url 'export_selected_pdf' %}" method="POST">
+        {% csrf_token %}
+        <div class="feed-container">
+
+            {% for post in posts %}
+            <article class="post-card" id="card-post-{{ post.id }}">
+
+                <div class="post-header">
+                    <div class="header-text">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <h2 class="post-title" style="margin: 0;">{{ post.title }}
+                            </h2>
+                            <input type="checkbox" name="post_ids" value="{{ post.id }}" style="transform: scale(1.5);">
+                        </div>
+                        {% if post.area_do_conhecimento %}
+                        <span class="area-pill" style="background-color: {{ post.area_do_conhecimento.color }};">
+                            {{ post.area_do_conhecimento.name }}</span>
+                        {% endif %}
+                        {% if post.dificuldade %}
+                        <span class="area-pill" style="background-color: {{ post.dificuldade.color }};">
+                            {{ post.dificuldade.name }}</span>
+                        {% endif %}
+                        <div class="post-meta">
+                            Criado em {{ post.created_at|date:"d M Y" }}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="post-content">
+                    {{ post.content|safe }}
+                </div>
+
+                <button type="button" class="btn-expand" data-id="{{ post.id }}" data-title="{{ post.title|escapejs }}"
+                    data-date="{{ post.created_at|date:'d M Y' }}" onclick="openViewModal(this)">Ver
+                    mais</button>
+
+            </article>
+            {% empty %}
+            <div class="post-card" style="text-align: center; color: #666;">
+                <p>Nenhuma questão encontrada.</p>
+            </div>
+            {% endfor %}
+
+        </div>
+    </form>
+
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['##', '##'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+            },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async
+        src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js">
+        </script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <script>
+        async function savePostAsPDF(postId, postTitle) {
+            // 1. Elemento original
+            const originalElement = document.getElementById('card-post-' + postId);
+
+            // 2. Clone para manipulação
+            const clone = originalElement.cloneNode(true);
+
+            // Remove botões desnecessários no PDF
+            const btnPdf = clone.querySelector('.btn-pdf');
+            if (btnPdf) btnPdf.remove();
+
+            const btnExpand = clone.querySelector('.btn-expand');
+            if (btnExpand) btnExpand.remove();
+
+            // --- FIX: Garante que o clone esteja expandido ---
+            clone.classList.add('expanded');
+            clone.style.height = 'auto';
+            clone.style.overflow = 'visible';
+            clone.style.maxHeight = 'none';
+
+            // --- A MÁGICA ACONTECE AQUI ---
+            // Precisamos encontrar onde o MathJax guardou os desenhos dos números na página original
+            // Geralmente fica no primeiro mjx-container ou numa tag svg oculta
+            const allDefs = document.querySelectorAll('svg defs');
+            let globalDefsContent = "";
+
+            // Coletamos todas as definições de símbolos da página
+            allDefs.forEach(def => {
+                globalDefsContent += def.innerHTML;
+            });
+
+            // 3. Converter MathJax em Imagens COMPLETAS
+            const originalMathNodes = originalElement.querySelectorAll('mjx-container');
+            const cloneMathNodes = clone.querySelectorAll('mjx-container');
+
+            // Usamos Array.from para poder usar Promises se necessário, mas aqui faremos síncrono
+            for (let i = 0; i < originalMathNodes.length; i++) {
+                const originalNode = originalMathNodes[i];
+                const cloneNode = cloneMathNodes[i];
+                const svg = originalNode.querySelector('svg');
+
+                if (svg) {
+                    // Pega o tamanho exato da tela
+                    const rect = svg.getBoundingClientRect();
+                    const width = rect.width;
+                    const height = rect.height;
+
+                    // Serializa o SVG para texto
+                    let xml = new XMLSerializer().serializeToString(svg);
+
+                    // --- CORREÇÃO CRÍTICA: Injetar as definições e forçar cor ---
+
+                    // 1. Garante que o namespace XML está correto
+                    if (!xml.includes('xmlns="http://www.w3.org/2000/svg"')) {
+                        xml = xml.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"');
+                    }
+
+                    // 2. Injeta as definições (os números) logo após a tag <svg> de abertura
+                    // Isso garante que quando o PDF renderizar a imagem, ele saiba o que é o símbolo "#MJ-123"
+                    xml = xml.replace('>', `><defs>${globalDefsContent}</defs><style>path { fill: black !important; stroke: black !important; }</style>`);
+
+                    // Cria a imagem Base64
+                    const svg64 = btoa(unescape(encodeURIComponent(xml)));
+                    const imageURI = 'data:image/svg+xml;base64,' + svg64;
+
+                    // Cria a tag IMG para substituir o SVG complexo
+                    const img = document.createElement('img');
+                    img.src = imageURI;
+                    img.style.width = width + 'px';
+                    img.style.height = height + 'px';
+                    img.style.verticalAlign = 'middle';
+
+                    // Substitui no clone
+                    cloneNode.innerHTML = '';
+                    cloneNode.appendChild(img);
+                }
+            }
+
+            // 4. Configuração do PDF
+            const opt = {
+                margin: [15, 15], // Aumentei um pouco a margem
+                filename: `Questao_${postId}.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: {
+                    scale: 2,
+                    useCORS: true,
+                    backgroundColor: '#ffffff',
+                    // logging: true // Descomente se precisar debugar
+                },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+
+            // Gera o PDF
+            html2pdf().set(opt).from(clone).save();
+        }
+
+        // Modal functions
+        function openModal() {
+            document.getElementById("postModal").style.display = "block";
+        }
+
+        function closeModal() {
+            document.getElementById("postModal").style.display = "none";
+        }
+
+        function openViewModal(button) {
+            const postId = button.getAttribute('data-id');
+            const title = button.getAttribute('data-title');
+            const date = button.getAttribute('data-date');
+
+            const modal = document.getElementById("viewPostModal");
+            const contentContainer = document.getElementById("viewModalContent");
+
+            // Get content from the hidden/collapsed card
+            const card = document.getElementById('card-post-' + postId);
+            const contentHtml = card.querySelector('.post-content').innerHTML;
+
+            // Escape single quotes for the onclick attribute
+            const safeTitle = title.replace(/'/g, "\\'");
+
+            contentContainer.innerHTML = `
+            <div class="post-header">
+                <div class="header-text">
+                    <h2 class="post-title">${title}</h2>
+                    <div class="post-meta">Criado em ${date}</div>
+                </div>
+            </div>
+            <div class="post-content" style="overflow: visible;">
+                ${contentHtml}
+            </div>
+            <div style="text-align: center; margin-top: 20px; border-top: 1px solid #eee; padding-top: 20px;">
+                <button class="btn-pdf" onclick="savePostAsPDF('${postId}', '${safeTitle}')" style="margin: 0;">
+                    Salvar PDF
+                </button>
+            </div>
+        `;
+
+            modal.style.display = "block";
+        }
+
+        function closeViewModal() {
+            document.getElementById("viewPostModal").style.display = "none";
+        }
+
+        // Close modal if clicked outside
+        window.onclick = function (event) {
+            var postModal = document.getElementById("postModal");
+            var viewModal = document.getElementById("viewPostModal");
+            if (event.target == postModal) {
+                postModal.style.display = "none";
+            }
+            if (event.target == viewModal) {
+                viewModal.style.display = "none";
+            }
+        }
+
+        // Filter functions
+        function applyFilters() {
+            const search = document.getElementById('searchInput').value;
+            const area = document.getElementById('areaFilter').value;
+
+            const params = new URLSearchParams();
+            if (search) params.set('search', search);
+            if (area) params.set('area', area);
+
+            window.location.href = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
+        }
+
+        function clearFilters() {
+            window.location.href = window.location.pathname;
+        }
+
+        // Allow Enter key to trigger filter
+        document.getElementById('searchInput').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                applyFilters();
+            }
+        });
+
+        // Select All/Deselect All functionality
+        function toggleSelectAll() {
+            const checkboxes = document.querySelectorAll('input[name="post_ids"]');
+            const button = event.target;
+
+            // Check if all are currently selected
+            const allSelected = Array.from(checkboxes).every(cb => cb.checked);
+
+            // Toggle all checkboxes
+            checkboxes.forEach(cb => {
+                cb.checked = !allSelected;
+            });
+
+            // Update button text
+            button.textContent = allSelected ? 'Selecionar todos' : 'Desmarcar todos';
+        }
+    </script>
+
+</body>
+
+</html>
