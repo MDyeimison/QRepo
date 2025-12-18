@@ -65,7 +65,6 @@ def export_selected_pdf(request):
                     font-family: "Times New Roman", Times, serif; 
                     font-size: 12pt; 
                     line-height: 1.5;
-                    text-align: justify;
                     color: #000;
                 }
                 
@@ -95,7 +94,21 @@ def export_selected_pdf(request):
                     width: auto;       
                 }
                 
-                p { text-indent: 1.25cm; margin: 0 0 10px 0; }
+                p { text-indent: 1.25cm; margin: 0 0 10px 0; text-align: justify; }
+                
+                /* Preserve align attribute (Summernote uses this) */
+                *[align="right"] { text-align: right !important; text-indent: 0 !important; }
+                *[align="left"] { text-align: left !important; text-indent: 0 !important; }
+                *[align="center"] { text-align: center !important; text-indent: 0 !important; }
+                
+                /* Preserve inline text-align styles (for compatibility) */
+                *[style*="text-align: right"] { text-align: right !important; text-indent: 0 !important; }
+                *[style*="text-align: left"] { text-align: left !important; text-indent: 0 !important; }
+                *[style*="text-align: center"] { text-align: center !important; text-indent: 0 !important; }
+                *[style*="text-align:right"] { text-align: right !important; text-indent: 0 !important; }
+                *[style*="text-align:left"] { text-align: left !important; text-indent: 0 !important; }
+                *[style*="text-align:center"] { text-align: center !important; text-indent: 0 !important; }
+                
                 .page-break { page-break-after: always; }
             </style>
         </head>
@@ -164,7 +177,6 @@ def generate_exam_pdf(request):
                     font-family: Arial, Helvetica, sans-serif; 
                     font-size: 9pt; 
                     line-height: 1.4;
-                    text-align: justify;
                     color: #000;
                     margin: 0; 
                 }
@@ -270,7 +282,20 @@ def generate_exam_pdf(request):
                     transform-origin: center;
                 }
                 
-                p { margin: 0 0 8px 0; }
+                p { margin: 0 0 8px 0; text-align: justify; }
+                
+                /* Preserve align attribute (Summernote uses this) */
+                *[align="right"] { text-align: right !important; }
+                *[align="left"] { text-align: left !important; }
+                *[align="center"] { text-align: center !important; }
+                
+                /* Preserve inline text-align styles (for compatibility) */
+                *[style*="text-align: right"] { text-align: right !important; }
+                *[style*="text-align: left"] { text-align: left !important; }
+                *[style*="text-align: center"] { text-align: center !important; }
+                *[style*="text-align:right"] { text-align: right !important; }
+                *[style*="text-align:left"] { text-align: left !important; }
+                *[style*="text-align:center"] { text-align: center !important; }
             </style>
         </head>
         <body>
